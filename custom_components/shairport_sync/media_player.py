@@ -35,6 +35,16 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     extra=vol.REMOVE_EXTRA,
 )
 
+SUPPORTED_FEATURES = (
+    MediaPlayerEntityFeature.PLAY
+    | MediaPlayerEntityFeature.PAUSE
+    | MediaPlayerEntityFeature.STOP
+    | MediaPlayerEntityFeature.NEXT_TRACK
+    | MediaPlayerEntityFeature.PREVIOUS_TRACK
+    | MediaPlayerEntityFeature.VOLUME_STEP
+)
+
+
 async def async_setup_platform(
     hass, config, async_add_entities, discovery_info=None
 ) -> None:
@@ -130,7 +140,7 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
             """Handle the active ended MQTT message."""
             _LOGGER.debug("Active ended")
             self._set_state(MediaPlayerState.IDLE)
-
+        
         @callback
         def play_stream_resumed(_) -> None:
             """Handle the play stream resume MQTT message."""
@@ -189,8 +199,6 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
         topic_map = {
             TopLevelTopic.PLAY_START: (play_started, "utf-8"),
             TopLevelTopic.PLAY_RESUME: (play_started, "utf-8"),
-            TopLevelTopic.PLAY_STREAM_RESUME: (play_stream_resumed, "utf-8"),
-            TopLevelTopic.PLAY_STREAM_PAUSE: (play_stream_paused, "utf-8"),
             TopLevelTopic.PLAY_END: (play_ended, "utf-8"),
             TopLevelTopic.PLAY_FLUSH: (play_ended, "utf-8"),
             TopLevelTopic.ACTIVE_END: (active_ended, "utf-8"),
@@ -199,6 +207,8 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
             TopLevelTopic.TITLE: (set_metadata("title"), "utf-8"),
             TopLevelTopic.COVER: (artwork_updated, None),
             TopLevelTopic.PLAY_PROGRESS: (progress_updated, "utf-8"),
+            TopLevelTopic.PLAY_STREAM_RESUME: (play_stream_resumed, "utf-8"),
+            TopLevelTopic.PLAY_STREAM_PAUSE: (play_stream_paused, "utf-8"),
         }
 
         for (top_level_topic, (topic_callback, encoding)) in topic_map.items():
@@ -274,7 +284,7 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
             _LOGGER.debug("Media image hash: %s", image_hash)
             return image_hash
         return None
-
+    
     @property
     def media_duration(self) -> float | None:
         """Duration of current playing media in seconds."""
@@ -293,14 +303,7 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
     @property
     def supported_features(self) -> int:
         """Flag media player features that are supported."""
-        return (
-            MediaPlayerEntityFeature.PLAY
-            | MediaPlayerEntityFeature.PAUSE
-            | MediaPlayerEntityFeature.STOP
-            | MediaPlayerEntityFeature.NEXT_TRACK
-            | MediaPlayerEntityFeature.PREVIOUS_TRACK
-            | MediaPlayerEntityFeature.VOLUME_STEP
-        )
+        return SUPPORTED_FEATURES
 
     @property
     def device_class(self) -> MediaPlayerDeviceClass:

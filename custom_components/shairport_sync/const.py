@@ -3,6 +3,8 @@ from enum import StrEnum
 
 DOMAIN = "shairport_sync"
 
+# OFF_STATES = [STATE_IDLE, STATE_OFF, STATE_UNAVAILABLE]
+
 
 class Command(StrEnum):
     """Remote commands for Shairport Sync."""
@@ -26,9 +28,9 @@ class TopLevelTopic(StrEnum):
     PLAY_FLUSH = "play_flush"
     PLAY_START = "play_start"
     PLAY_RESUME = "play_resume"
-    PLAY_STREAM_RESUME = "ssnc/prsm"
-    PLAY_STREAM_PAUSE = "ssnc/paus"
-    PLAY_PROGRESS = "ssnc/prgr"
     ACTIVE_END = "active_end"
     REMOTE = "remote"
     TITLE = "title"
+    PLAY_PROGRESS = "ssnc/prgr"
+    PLAY_STREAM_RESUME = "ssnc/prsm"
+    PLAY_STREAM_PAUSE = "ssnc/paus"
