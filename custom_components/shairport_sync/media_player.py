@@ -10,10 +10,11 @@ from homeassistant.components.media_player import (
     MediaPlayerEntity,
 )
 from homeassistant.components.media_player.const import (
+    MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
 )
-from homeassistant.components.mqtt import async_subscribe
+from homeassistant.components.mqtt import async_publish, async_subscribe
 from homeassistant.components.mqtt.const import CONF_TOPIC
 from homeassistant.components.mqtt.util import valid_publish_topic
 from homeassistant.config_entries import ConfigEntry
@@ -22,7 +23,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, TopLevelTopic
+from .const import DOMAIN, Command, TopLevelTopic
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
         self.hass = hass
         self._name = name
         self._base_topic = topic
+        self._remote_topic = f"{self._base_topic}/{TopLevelTopic.REMOTE}"
         self._player_state = MediaPlayerState.IDLE
         self._title = None
         self._artist = None
@@ -291,11 +293,72 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
     @property
     def supported_features(self) -> int:
         """Flag media player features that are supported."""
-        return 0
+        return (
+            MediaPlayerEntityFeature.PLAY
+            | MediaPlayerEntityFeature.PAUSE
+            | MediaPlayerEntityFeature.STOP
+            | MediaPlayerEntityFeature.NEXT_TRACK
+            | MediaPlayerEntityFeature.PREVIOUS_TRACK
+            | MediaPlayerEntityFeature.VOLUME_STEP
+        )
 
     @property
     def device_class(self) -> MediaPlayerDeviceClass:
         return MediaPlayerDeviceClass.SPEAKER
+
+    async def _send_remote_command(self, command) -> None:
+        """Send a command to the remote control topic."""
+        _LOGGER.debug("Sending '%s' command", command)
+        await async_publish(self.hass, self._remote_topic, command)
+
+    async def _send_command_update_state(
+        self, command: Command, state: MediaPlayerState
+    ) -> None:
+        """Send the command and update local state."""
+        await self._send_remote_command(command)
+        self._set_state(state)
+
+    async def async_media_play(self) -> None:
+        """Send play command."""
+        await self._send_command_update_state(Command.PLAY, MediaPlayerState.PLAYING)
+
+    async def async_media_pause(self) -> None:
+        """Send pause command."""
+        await self._send_command_update_state(Command.PAUSE, MediaPlayerState.PAUSED)
+
+    async def async_media_stop(self) -> None:
+        """Send stop command."""
+        await self._send_command_update_state(Command.STOP, MediaPlayerState.IDLE)
+
+    async def async_media_previous_track(self) -> None:
+        """Send previous track command."""
+        await self._send_remote_command(Command.SKIP_PREVIOUS)
+
+    async def async_media_next_track(self) -> None:
+        """Send next track command."""
+        await self._send_remote_command(Command.SKIP_NEXT)
+
+    async def async_volume_up(self) -> None:
+        """Turn volume up for media player."""
+        await self._send_remote_command(Command.VOLUME_UP)
+
+    async def async_volume_down(self) -> None:
+        """Turn volume down for media player."""
+        await self._send_remote_command(Command.VOLUME_DOWN)
+
+    async def async_media_play_pause(self) -> None:
+        """Play or pause the media player."""
+        _LOGGER.debug(
+            "Sending toggle play/pause command; currently %s", self._player_state
+        )
+        if self._player_state == MediaPlayerState.PLAYING:
+            await self._send_command_update_state(
+                Command.PAUSE, MediaPlayerState.PAUSED
+            )
+        else:
+            await self._send_command_update_state(
+                Command.PLAY, MediaPlayerState.PLAYING
+            )
 
     async def async_get_media_image(self) -> tuple[str | None, str | None]:
         """Fetch the image of the currently playing media."""
