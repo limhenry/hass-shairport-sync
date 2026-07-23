@@ -178,14 +178,14 @@ class ShairportSyncMediaPlayer(MediaPlayerEntity):
         @callback
         def progress_updated(msg) -> None:
             """Handle the progress MQTT message."""
-            # Format: "start/current/end" in samples at 44100 Hz
+            # Format: "start/current/end" in samples at 48000 Hz
             try:
                 parts = msg.payload.split("/")
                 if len(parts) == 3:
                     start, current, end = map(int, parts)
                     # Calculate position and duration in seconds
-                    self._media_position = round((current - start) / 44100, 1)
-                    self._media_duration = round((end - start) / 44100, 1)
+                    self._media_position = round((current - start) / 48000, 1)
+                    self._media_duration = round((end - start) / 48000, 1)
                     self._media_position_updated_at = datetime.now()
                     _LOGGER.debug(
                         "Progress updated: position=%s, duration=%s",
